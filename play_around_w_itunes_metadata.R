@@ -6,6 +6,7 @@
 library(XML)
 library(plyr)
 library(dplyr)
+library(yaml)
 
 format_itunes_data <- function(){
   # Select the XML file
@@ -65,7 +66,7 @@ summarise_by_artist_grouped <- function(artist_data, artist_groupings){
   for(gp in names(artist_groupings)){
     artist_data$Artist.Group <- ifelse(
       artist_data$Artist %in% artist_groupings[[gp]],
-      gp, artist_data$Artist.Group)
+      paste(gp, '& offshoots'), artist_data$Artist.Group)
   }
   
   artist_data_grouped <- artist_data %>%
@@ -148,18 +149,7 @@ get_spotifyish_summary_short(songs.played, plays.by.artist)
 
 # These mappings are v tailored to my listening habits--for general use
 # maybe better to upload a personalized mapping file or something
-artist_groupings <- list(
-  'Oasis (& offshoots)' = c('Oasis', 'Beady Eye', 'Noel Gallagher\'s High Flying Birds',
-              'Liam Gallagher'),
-  'Blur (& offshoots)' = c('Blur', 'Gorillaz', 'Damon Albarn', 
-                         'The Good, The Bad & The Queen', 'Graham Coxon', 'Fat Les'),
-  'The Beatles (& offshoots)' = c('The Beatles', 'Paul McCartney', 'Wings', 
-                                'John Lennon', 'George Harrison'),
-  'The Smiths (& offshoots)' = c('The Smiths', 'Morrissey', 'Johnny Marr'),
-  'Led Zeppelin (& offshoots)' = c('Led Zeppelin', 'Robert Plant'),
-  'Talking Heads (& offshoots)' = c('Talking Heads', 'David Byrne'),
-  'The Who (& offshoots)' = c('The Who', 'Roger Daltrey', 'Pete Townshend', 'John Entwistle')
-)
+artist_groupings <- read_yaml('artist_groupings.yaml')
 
 plays.by.artist.group <- summarise_by_artist_grouped(plays.by.artist, artist_groupings)
 get_spotifyish_summary_long(songs.played, plays.by.artist.group)

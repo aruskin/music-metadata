@@ -7,7 +7,7 @@ ui <- fluidPage(
   # Application title
   useShinyalert(),
   titlePanel("pRklife"),
-  h4(paste("Help! I'm still nor over Blur's dissolution & I'm intimidated",
+  h4(paste("Help! I'm still not over Blur's dissolution & I'm intimidated",
            "by the scope of Damon Albarn & Graham Coxon's non-Blur material.")),
   h4("Where do I start?"),
   br(),
@@ -43,14 +43,22 @@ ui <- fluidPage(
   fluidRow(
     column(2, 
            actionButton('generatePlaylist', 'Generate Playlist')
-           # ,br(),
-           # actionButton('makeOnSpotify', 'Add to Spotify')
+           ,br()
+           ,br()
+           ,textInput('userID', 'Spotify user ID:')
+           ,textInput('playlistName', 'Playlist name:')
+           ,actionButton('makeOnSpotify', 'Add Playlist to Spotify')
            ),
     column(10, tableOutput('playlist'))
   )
 )
 
 server <- function(input, output, session){
+  
+  spotify_access_token <- reactive({
+    get_spotify_access_token()
+  })
+  
   output$out1 <- renderTable(get_top_3_closest_table(input$song1))
   output$out2 <- renderTable({
     if(input$song2 == 'Song 2') showNotification('lol')
@@ -70,12 +78,12 @@ server <- function(input, output, session){
    
     grab_songs <- filter(blur_data, artist=='Blur' & track_name %in% my_fave_songs) 
     
-    # get set of 15 closest non-Blur songs for each of the selected Blur tracks,
-    # deduplicate set, and generate harmonically mixed playlist of 20 songs from
+    # get set of 10 closest non-Blur songs for each of the selected Blur tracks,
+    # deduplicate set, and generate ~harmonically mixed~ playlist of 20ish songs from
     # that pool
     recs <- get_n_closest_songs(song=grab_songs, 
                                 song_set=blur_data %>% filter(artist != 'Blur'),
-                                15, numeric_features) %>%
+                                10, numeric_features) %>%
       unique
     generate_playlist(recs, min(20, nrow(recs)))
   }
@@ -86,6 +94,19 @@ server <- function(input, output, session){
   output$playlist <- renderTable({
     my_playlist <- genPlaylist()
     my_playlist %>% select(artist, track_name, album_name)
+  })
+  
+  observeEvent(input$makeOnSpotify, {
+    validate(
+      need(input$userID, 'Enter your Spotify user ID'),
+      need(input$playlistName, 'Enter a name for the playlist')
+    )
+    spotify_playlist <- spotifyr::create_playlist(username=input$userID,
+                                        playlist_name=input$playlistName)
+    my_playlist <- genPlaylist()
+    spotifyr::add_to_playlist(username = input$userID,
+                    playlist_id = spotify_playlist$id,
+                    tracks =  my_playlist$track_uri)
   })
 }
 

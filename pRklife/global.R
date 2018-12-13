@@ -1,4 +1,5 @@
 library(dplyr)
+library(spotifyr)
 
 # Spotify audio features w/ scores from 0 to 1 that we'll be using for 
 # most of the analysis here
@@ -59,6 +60,15 @@ generate_playlist <- function(song_set, max_tracks){
     playlist[i,] <- prev_song
   }
   playlist
+}
+
+create_spotify_playlist <- function(username, playlist_name, playlist_tracks){
+  spotify_playlist <- create_playlist(username=username,
+                                      playlist_name=playlist_name)
+
+  add_to_playlist(username = username,
+                  playlist_id = spotify_playlist$id,
+                  tracks =  playlist_tracks$track_uri)
 }
 
 # variables we'll be using in both UI and server

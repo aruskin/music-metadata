@@ -1,0 +1,26 @@
+key, mode, code
+B, major, 1
+G#, minor, 1
+F#, major, 2
+D#, minor, 2
+C#, major, 3
+A#, minor, 3
+G#, major, 4
+F, minor, 4
+D#, major, 5
+C, minor, 5
+A#, major, 6
+G, minor, 6
+F, major, 7
+D, minor, 7
+C, major, 8
+A, minor, 8
+G, major, 9
+E, minor, 9
+D, major, 10
+B, minor, 10
+A, major, 11
+F#, minor, 11
+E, major, 12
+C#, minor, 12
+ 

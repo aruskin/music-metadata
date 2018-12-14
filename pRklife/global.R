@@ -1,5 +1,7 @@
 library(dplyr)
 library(spotifyr)
+library(httr)
+library(stringr)
 
 # Spotify audio features w/ scores from 0 to 1 that we'll be using for 
 # most of the analysis here

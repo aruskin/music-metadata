@@ -92,7 +92,7 @@ server <- function(input, output, session){
   }
   )
   
-  # Display plalylist as table--eventually give user option to automatically
+  # Display playlist as table--eventually give user option to automatically
   # port it over to Spotify
   output$playlist <- renderTable({
     my_playlist <- genPlaylist()
@@ -104,12 +104,24 @@ server <- function(input, output, session){
       need(input$userID, 'Enter your Spotify user ID'),
       need(input$playlistName, 'Enter a name for the playlist')
     )
-    spotify_playlist <- spotifyr::create_playlist(username=input$userID,
-                                        playlist_name=input$playlistName)
-    my_playlist <- genPlaylist()
-    spotifyr::add_to_playlist(username = input$userID,
-                    playlist_id = spotify_playlist$id,
-                    tracks =  my_playlist$track_uri)
+    user <- tolower(str_replace(input$userID, 'spotify:user:', ''))
+    user_info <- GET(paste0('https://api.spotify.com/v1/', 'users/', user), 
+                     query = list(access_token = spotify_access_token())) %>% 
+      content
+    if(is.null(user_info$error)){
+      spotify_playlist <- spotifyr::create_playlist(username=input$userID,
+                                                    playlist_name=input$playlistName)
+      if(!is.null(spotify_playlist$error.status)){
+        showNotification(spotify_playlist$error.message %>% as.character())
+      }else{
+        my_playlist <- genPlaylist()
+        spotifyr::add_to_playlist(username = input$userID,
+                                  playlist_id = spotify_playlist$id,
+                                  tracks =  my_playlist$track_uri)
+      }
+    } else {
+      showNotification("Sorry, couldn't find that user on Spotify.")
+    }
   })
 }
 

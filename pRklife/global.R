@@ -38,7 +38,9 @@ get_top_3_closest_table <- function(in_song){
     song_row <- filter(blur_data, artist=='Blur' & track_name==in_song)
     song_top3 <- get_n_closest_songs(song_row, blur_data %>% filter(artist != 'Blur'),
                                       3)
-    song_top3 %>% select(artist, track_name)
+    song_top3 <- mutate(song_top3, track=paste0('<a href=\"', track_open_spotify_url,
+                                                       '\">', track_name, '</a>'))
+    song_top3 %>% select(artist, track)
   }
 }
 

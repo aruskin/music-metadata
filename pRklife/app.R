@@ -59,14 +59,17 @@ server <- function(input, output, session){
     get_spotify_access_token()
   })
   
-  output$out1 <- renderTable(get_top_3_closest_table(input$song1))
+  output$out1 <- renderTable(get_top_3_closest_table(input$song1), 
+                             sanitize.text.function = function(x) x)
   output$out2 <- renderTable({
     if(input$song2 == 'Song 2') showNotification('lol')
     get_top_3_closest_table(input$song2)
-  })
-  output$out3 <- renderTable(get_top_3_closest_table(input$song3))
-  output$out4 <- renderTable(get_top_3_closest_table(input$song4))
-  
+  },
+  sanitize.text.function = function(x) x)
+  output$out3 <- renderTable(get_top_3_closest_table(input$song3),
+                             sanitize.text.function = function(x) x)
+  output$out4 <- renderTable(get_top_3_closest_table(input$song4),
+                             sanitize.text.function = function(x) x)
   genPlaylist <- eventReactive(input$generatePlaylist, {
     song1 <- input$song1
     song2 <- input$song2

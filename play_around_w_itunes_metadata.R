@@ -62,6 +62,8 @@ summarise_by_artist <- function(track_data){
 }
 
 summarise_by_artist_grouped <- function(artist_data, artist_groupings){
+  total.plays <- sum(artist_data$total_plays)
+  total.tracks <- sum(artist_data$total_tracks)
   artist_data$Artist.Group <- artist_data$Artist
   for(gp in names(artist_groupings)){
     artist_data$Artist.Group <- ifelse(

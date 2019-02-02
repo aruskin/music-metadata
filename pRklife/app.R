@@ -2,6 +2,7 @@ library(shiny)
 library(shinyalert)
 
 source("global.R")
+readRenviron(".Renviron")
 
 ui <- fluidPage(
   # Application title
@@ -61,6 +62,7 @@ server <- function(input, output, session){
   
   output$out1 <- renderTable(get_top_3_closest_table(input$song1), 
                              sanitize.text.function = function(x) x)
+  
   output$out2 <- renderTable({
     if(input$song2 == 'Song 2') showNotification('lol')
     get_top_3_closest_table(input$song2)
@@ -108,16 +110,26 @@ server <- function(input, output, session){
     user_info <- GET(paste0('https://api.spotify.com/v1/', 'users/', user), 
                      query = list(access_token = spotify_access_token())) %>% 
       content
+
     if(is.null(user_info$error)){
+      endpoint <- oauth_endpoint(authorize = "https://accounts.spotify.com/authorize", 
+                                 access = "https://accounts.spotify.com/api/token")
+      app <- oauth_app("spotifyr", Sys.getenv("SPOTIFY_CLIENT_ID"), Sys.getenv("SPOTIFY_CLIENT_SECRET"))
+      auth_code <- oauth2.0_token(endpoint = endpoint, app = app, 
+                                  scope = 'playlist-modify playlist-modify-private', 
+                                  cache=FALSE)
       spotify_playlist <- spotifyr::create_playlist(username=input$userID,
-                                                    playlist_name=input$playlistName)
+                                                    playlist_name=input$playlistName,
+                                                    auth_code = auth_code)
       if(!is.null(spotify_playlist$error.status)){
         showNotification(spotify_playlist$error.message %>% as.character())
       }else{
         my_playlist <- genPlaylist()
         spotifyr::add_to_playlist(username = input$userID,
                                   playlist_id = spotify_playlist$id,
-                                  tracks =  my_playlist$track_uri)
+                                  tracks =  my_playlist$track_uri,
+                                  auth_code = auth_code)
+        showNotification("Done!")
       }
     } else {
       showNotification("Sorry, couldn't find that user on Spotify.")

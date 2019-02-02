@@ -66,15 +66,6 @@ generate_playlist <- function(song_set, max_tracks){
   playlist
 }
 
-create_spotify_playlist <- function(username, playlist_name, playlist_tracks){
-  spotify_playlist <- create_playlist(username=username,
-                                      playlist_name=playlist_name)
-
-  add_to_playlist(username = username,
-                  playlist_id = spotify_playlist$id,
-                  tracks =  playlist_tracks$track_uri)
-}
-
 # variables we'll be using in both UI and server
 blur_data <- read.csv("data/blur_and_co_spotify_data.csv", stringsAsFactors=FALSE)
 camelot <- read.csv("data/camelot_mappings.csv")

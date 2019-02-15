@@ -4,4 +4,4 @@
 
 **pRklife.R**: first experiment with spotifyr package--try to generate a playlist of Blur members' post-Blur music based on similarity to groups of Blur songs. Def intend to expand this to better allow user input of song preferences
 
-**pRklife**: a so far super basic Shiny app that lives [here](https://ballerlikemahler.shinyapps.io/pRklife/)
+**pRklife**: a so far super basic Shiny app (still trying to get authentication to work for server version)

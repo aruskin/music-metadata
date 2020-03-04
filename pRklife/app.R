@@ -1,60 +1,120 @@
 library(shiny)
 library(shinyalert)
+library(httpuv)
+library(shinyjs)
 
 source("global.R")
 readRenviron(".Renviron")
 
+if (interactive()) {
+  # testing url
+  options(shiny.port = 1410)
+  REDIRECT_URI <- 'http://localhost:1410/'
+} #else {
+  ## deployed URL (this won't work)
+  #REDIRECT_URI <- 'https://ballerlikemahler.shinyapps.io/pRklife2/'
+#}
+
+# # copied from https://github.com/charlie86/SpotiFest/
+auth_url <- GET('https://accounts.spotify.com/authorize',
+                query = list(
+                  client_id = Sys.getenv('SPOTIFY_CLIENT_ID'),
+                  response_type = 'token',
+                  redirect_uri = REDIRECT_URI,
+                  scope =  'playlist-modify playlist-modify-private'
+                )) %>% .$url
+
+login_js <- str_glue("shinyjs.login = function(callback) {
+                    var url = '{{auth_url}}';
+                     var parseResult = new DOMParser().parseFromString(url, 'text/html');
+                     var parsedUrl = parseResult.documentElement.textContent;
+                     window.location = parsedUrl;
+                     };", .open = '{{', .close = '}}'
+)
+
 ui <- fluidPage(
   # Application title
   useShinyalert(),
+  useShinyjs(),
+  extendShinyjs(text = login_js),
   titlePanel("pRklife"),
   h4(paste("Help! I'm still not over Blur's dissolution & I'm intimidated",
            "by the scope of Damon Albarn & Graham Coxon's non-Blur material.")),
   h4("Where do I start?"),
   br(),
-  h4("Pick your top Blur tracks:"),
-  fluidRow(
-    column(3,
-           wellPanel(
-             selectizeInput('song1', 'Song 1', choices=c('Choose:', blur_songs)),
-             h5('Top 3 Most Similar:'),
-             tableOutput('out1')
-           )),
-    column(3,
-           wellPanel(
-             selectizeInput('song2', 'Song 2', choices=c('Choose:', blur_songs)),
-             h5('Top 3 Most Similar:'),
-             tableOutput('out2')
-           )),
-    column(3,
-           wellPanel(
-             selectizeInput('song3', 'Song 3', choices=c('Choose:', blur_songs)),
-             h5('Top 3 Most Similar:'),
-             tableOutput('out3')
-           )),
-    column(3,
-           wellPanel(
-             selectizeInput('song4', 'Song 4',  choices=c('Choose:', blur_songs)),
-             h5('Top 3 Most Similar:'),
-             tableOutput('out4')
-           ))
-  ),
-  br(),
-  h4("Make me a playlist based on these tracks:"),
-  fluidRow(
-    column(2, 
-           actionButton('generatePlaylist', 'Generate Playlist')
-           ,br()
-           ,br()
-           ,textInput('userID', 'Spotify user ID:')
-           ,textInput('playlistName', 'Playlist name:')
-           ,actionButton('makeOnSpotify', 'Add Playlist to Spotify')
-           ),
-    column(10, tableOutput('playlist'))
-  )
+  div(id="login_button", 
+      actionButton('spotifyLogin', 'Log in with Spotify')),
+  verbatimTextOutput('testTxt'),
+  div(id="inputs",
+      h4("Pick your top Blur tracks:"),
+      fluidRow(
+        column(3,
+               wellPanel(
+                 selectizeInput('song1', 'Song 1', choices=c('Choose:', blur_songs)),
+                 h5('Top 3 Most Similar:'),
+                 tableOutput('out1')
+               )),
+        column(3,
+               wellPanel(
+                 selectizeInput('song2', 'Song 2', choices=c('Choose:', blur_songs)),
+                 h5('Top 3 Most Similar:'),
+                 tableOutput('out2')
+               )),
+        column(3,
+               wellPanel(
+                 selectizeInput('song3', 'Song 3', choices=c('Choose:', blur_songs)),
+                 h5('Top 3 Most Similar:'),
+                 tableOutput('out3')
+               )),
+        column(3,
+               wellPanel(
+                 selectizeInput('song4', 'Song 4',  choices=c('Choose:', blur_songs)),
+                 h5('Top 3 Most Similar:'),
+                 tableOutput('out4')
+               ))
+      ),
+      br(),
+      h4("Make me a playlist based on these tracks:"),
+      fluidRow(
+        column(2, 
+               actionButton('generatePlaylist', 'Generate Playlist')
+               ,br()
+               ,br()
+               ,textInput('userID', 'Spotify user ID:')
+               ,textInput('playlistName', 'Playlist name:')
+               ,actionButton('makeOnSpotify', 'Add Playlist to Spotify')
+               ,verbatimTextOutput('txtArea')
+        ),
+        column(10, tableOutput('playlist'))
+      ))
 )
 
+values <- reactiveValues(logged_in=FALSE)
+
 server <- function(input, output, session){
+  hide('inputs')
+  
+  # copied from https://github.com/charlie86/SpotiFest/
+  get_access_token <- reactive({
+    url_hash <- getUrlHash()
+    access_token <- url_hash %>% str_replace('&.*', '') %>% str_replace('.*=', '')
+  })
+  
+  observeEvent(input$spotifyLogin, {
+    js$login()
+    values$logged_in <- TRUE
+  })
+  
+  output$testTxt <- renderText({
+    req(values$logged_in)
+    res <- GET('https://api.spotify.com/v1/me/', 
+               add_headers(.headers = c('Authorization' = 
+                                          paste0('Bearer ', get_access_token())))) %>% 
+      content %>% .$items
+    print(res)
+    hide('login_button')
+    shinyjs::show('inputs')
+  })
   
   spotify_access_token <- reactive({
     get_spotify_access_token()
@@ -68,10 +128,13 @@ server <- function(input, output, session){
     get_top_3_closest_table(input$song2)
   },
   sanitize.text.function = function(x) x)
+  
   output$out3 <- renderTable(get_top_3_closest_table(input$song3),
                              sanitize.text.function = function(x) x)
+  
   output$out4 <- renderTable(get_top_3_closest_table(input$song4),
                              sanitize.text.function = function(x) x)
+  
   genPlaylist <- eventReactive(input$generatePlaylist, {
     song1 <- input$song1
     song2 <- input$song2
@@ -80,7 +143,7 @@ server <- function(input, output, session){
     # should probably do some checks here to make sure user has actually chosen songs
     # do we care if they have the same song chosen more than once? idk
     my_fave_songs <- c(song1, song2, song3, song4)
-   
+    
     grab_songs <- filter(blur_data, artist=='Blur' & track_name %in% my_fave_songs) 
     
     # get set of 10 closest non-Blur songs for each of the selected Blur tracks,
@@ -101,7 +164,7 @@ server <- function(input, output, session){
     my_playlist %>% select(artist, track_name, album_name)
   })
   
-  observeEvent(input$makeOnSpotify, {
+  foo <- eventReactive(input$makeOnSpotify, {
     validate(
       need(input$userID, 'Enter your Spotify user ID'),
       need(input$playlistName, 'Enter a name for the playlist')
@@ -110,31 +173,40 @@ server <- function(input, output, session){
     user_info <- GET(paste0('https://api.spotify.com/v1/', 'users/', user), 
                      query = list(access_token = spotify_access_token())) %>% 
       content
-
+    
     if(is.null(user_info$error)){
-      endpoint <- oauth_endpoint(authorize = "https://accounts.spotify.com/authorize", 
+      #js$login()
+      #print(REDIRECT_URI)
+      endpoint <- oauth_endpoint(authorize = "https://accounts.spotify.com/authorize",
                                  access = "https://accounts.spotify.com/api/token")
-      app <- oauth_app("spotifyr", Sys.getenv("SPOTIFY_CLIENT_ID"), Sys.getenv("SPOTIFY_CLIENT_SECRET"))
-      auth_code <- oauth2.0_token(endpoint = endpoint, app = app, 
-                                  scope = 'playlist-modify playlist-modify-private', 
+      app <- oauth_app("spotifyr", 
+                       key = Sys.getenv("SPOTIFY_CLIENT_ID"), 
+                       secret = Sys.getenv("SPOTIFY_CLIENT_SECRET"))
+      #,redirect_uri = REDIRECT_URI)
+      auth_code <- oauth2.0_token(endpoint = endpoint, app = app,
+                                  scope = 'playlist-modify playlist-modify-private',
                                   cache=FALSE)
       spotify_playlist <- spotifyr::create_playlist(username=input$userID,
-                                                    playlist_name=input$playlistName,
-                                                    auth_code = auth_code)
+                                                    playlist_name=input$playlistName
+                                                    ,  auth_code = auth_code)
       if(!is.null(spotify_playlist$error.status)){
         showNotification(spotify_playlist$error.message %>% as.character())
       }else{
         my_playlist <- genPlaylist()
         spotifyr::add_to_playlist(username = input$userID,
                                   playlist_id = spotify_playlist$id,
-                                  tracks =  my_playlist$track_uri,
-                                  auth_code = auth_code)
+                                  tracks =  my_playlist$track_uri
+                                  ,auth_code = auth_code)
         showNotification("Done!")
       }
     } else {
       showNotification("Sorry, couldn't find that user on Spotify.")
     }
   })
+  
+  output$txtArea <- renderText(
+    foo()
+  )
 }
 
 shinyApp(ui, server)

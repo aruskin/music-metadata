@@ -14,7 +14,16 @@ numeric_features <- c('danceability', 'energy', 'speechiness',
                       'acousticness', 'instrumentalness', 
                       'liveness', 'valence')
 
-get_full_blur_data <- function(){
+dedupe_tracks <- function(data){
+  data <- data %>%
+    mutate(number=1) %>%
+    group_by(artist, album_name, track_name) %>%
+    mutate(copy_num = cumsum(number))
+  data <- filter(data, copy_num==1)
+  select(data, -one_of(c('number', 'copy_num')))
+}
+
+get_blur_and_co_data <- function(){
   require(spotifyr)
   require(dplyr)
   access_token <- get_spotify_access_token()
@@ -22,26 +31,47 @@ get_full_blur_data <- function(){
   keep_columns <- c('artist', 'album_name', 'album_release_year', 'track_name', 'track_uri',
                     'danceability', 'energy', 'speechiness', 'acousticness', 'instrumentalness',
                     'liveness', 'valence',
-                    'key_mode', 'tempo', 'external_urls.spotify')
+                    'key_mode', 'tempo',
+                    'external_urls.spotify')
   
-  # Get song data
+  # Get song data for each artist, filter down to non-live albums
   blur <- get_artist_audio_features('blur') %>% 
-    mutate(artist='Blur') %>% select(one_of(keep_columns))
+    mutate(artist='Blur') %>%
+    filter(album_name %in% c('13', 'Blur', 'Leisure', 
+                             'Modern Life Is Rubbish',
+                             'Parklife', 'The Great Escape',
+                             'The Magic Whip', 'Think Tank')) %>%
+    select(one_of(keep_columns)) %>%
+    dedupe_tracks
   graham <- get_artist_audio_features('graham coxon') %>%
-    mutate(artist='Graham Coxon') %>% select(one_of(keep_columns))
+    mutate(artist='Graham Coxon') %>%
+    select(one_of(keep_columns)) %>%
+    dedupe_tracks
   damon <- get_artist_audio_features('damon albarn') %>%
-    mutate(artist='Damon Albarn') %>% select(one_of(keep_columns))
+    mutate(artist='Damon Albarn') %>%
+    filter(album_name != 'Dr Dee [Album Sampler] ') %>%
+    select(one_of(keep_columns)) %>%
+    dedupe_tracks
   gorillaz <- get_artist_audio_features('gorillaz') %>%
-    mutate(artist='Gorillaz') %>% select(one_of(keep_columns))
+    mutate(artist='Gorillaz') %>%
+    filter(album_name != 'Demon Days Live at the Manchester Opera House') %>%
+    select(one_of(keep_columns)) %>%
+    dedupe_tracks
   gbq <- get_artist_audio_features('the good the bad and the queen') %>%
-    mutate(artist='The Good, The Bad & The Queen') %>% select(one_of(keep_columns))
-  
+    mutate(artist='The Good, The Bad & The Queen') %>%
+    select(one_of(keep_columns)) %>%
+    dedupe_tracks
   # Merge datasets
   blur_and_co <- union(blur, graham) %>%
     union(damon) %>%
     union(gorillaz) %>%
-    union(gbq)
+    union(gbq) %>%
+    ungroup
   
+  # Get mappings from key to Camelot number
+  camelot <- read.csv("data/camelot_mappings.csv")
+  camelot$key_mode <- paste0(camelot$key, camelot$mode)
+  blur_and_co <- left_join(blur_and_co, camelot, by='key_mode')
   blur_and_co
 }
 
@@ -52,13 +82,6 @@ process_blur_data <- function(blur_data){
   blur_data$track_name <- gsub("Damon Albarn: Dr Dee, An English Opera: No. [0-9]*,", "",
                                blur_data$track_name, fixed=FALSE)
   blur_data$track_name <- gsub(" \\(feat. .*\\)", "", blur_data$track_name, fixed=FALSE)
-  albums_to_exclude <- c('Dr Dee [Album Sampler]', 'Laika Come Home', 
-                         'All The People... Blur Live At Hyde Park 02/07/2009',
-                         'All The People... Blur Live At Hyde Park 03/07/2009', 
-                         'Bustin + Dronin', "Bustin' + Dronin'", 'D-Sides',
-                         'Parklive', 'Demon Days Live At The Manchester Opera House',
-                         'Demon Days Live at the Manchester Opera House')
-  blur_data <- filter(blur_data, !(album_name %in% albums_to_exclude))
   blur_data
 }
 
@@ -105,13 +128,7 @@ generate_playlist <- function(song_set, max_tracks){
 }
 
 # variables we'll be using in both UI and server
-blur_data <- read.csv("data/blur_and_co_spotify_data.csv", stringsAsFactors=FALSE)
-camelot <- read.csv("data/camelot_mappings.csv")
-camelot$key_mode <- paste0(camelot$key, camelot$mode)
-
-blur_data <- left_join(blur_data, camelot, by='key_mode')
-rm(camelot)
-
+blur_data <- get_blur_and_co_data()
 blur_data <- process_blur_data(blur_data)
 
 blur_songs <- blur_data %>% 

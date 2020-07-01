@@ -28,8 +28,10 @@ format_itunes_data <- function(){
   gc()
   
   # We only care about songs that you actually played
-  # Also fuck podcasts, right?
-  songs.played <- filter(ituneslib_df, !is.na(Play.Count), is.na(Podcast) | Podcast != 'TRUE')
+  songs.played <- filter(ituneslib_df, !is.na(Play.Count))
+  # Podcast field not a thing anymore in Music (macOS Catalina)
+  if('Podcast' %in% colnames(songs.played))
+    songs.played <- filter(songs.played, is.na(Podcast) | Podcast != 'TRUE')
   rm(ituneslib_df)
   gc()
   
@@ -156,3 +158,7 @@ artist_groupings <- read_yaml('artist_groupings.yaml')
 plays.by.artist.group <- summarise_by_artist_grouped(plays.by.artist, artist_groupings)
 get_spotifyish_summary_long(songs.played, plays.by.artist.group)
 get_spotifyish_summary_short(songs.played, plays.by.artist.group)
+
+plays.by.artist.group %>% select(Artist, minutes_played) %>% .[1:10,]
+
+songs.played %>% select(Artist, Name, Play.Count) %>% arrange(-Play.Count) %>% .[1:10,]

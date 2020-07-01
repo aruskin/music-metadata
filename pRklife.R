@@ -18,7 +18,8 @@ get_blur_and_co_data <- function(){
   keep_columns <- c('artist', 'album_name', 'album_release_year', 'track_name', 'track_uri',
                     'danceability', 'energy', 'speechiness', 'acousticness', 'instrumentalness',
                     'liveness', 'valence',
-                    'key_mode', 'tempo')
+                    'key_mode', 'tempo',
+                    'external_urls.spotify')
   
   # Get song data for each artist, filter down to non-live albums
   blur <- get_artist_audio_features('blur') %>% 

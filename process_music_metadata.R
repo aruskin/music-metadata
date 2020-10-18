@@ -154,26 +154,26 @@ get_spotifyish_summary_long <- function(track_data, artist_data, service_name, i
       .[1:5,]
   )
   if(!include_time){
-    spotifyish_summary$top_artist <- artist_data %>% arrange(-total_plays) %>% pull(Artist) %>% .[1]
-    spotifyish_summary$top_5_artists <-  artist_data %>% arrange(-total_plays) %>% pull(Artist) %>% .[1:5]
+    spotifyish_summary[['top_artist']] <- artist_data %>% arrange(-total_plays) %>% pull(Artist) %>% .[1]
+    spotifyish_summary[['top_5_artists']] <-  artist_data %>% arrange(-total_plays) %>% pull(Artist) %>% .[1:5]
   }else{
-    spotifyish_summary$top_artist <- artist_data %>% arrange(-minutes_played) %>% pull(Artist) %>% .[1]
-    spotifyish_summary$top_5_artists <-  artist_data %>% arrange(-minutes_played) %>% pull(Artist) %>% .[1:5]
-    spotifyish_summary$minutes_listening <- floor(sum(track_data$Play.Count*(track_data$Total.Time/(60*1000)), na.rm=TRUE))
-    spotifyish_summary$hours_spent_w_top_artist <- floor(max(artist_data$minutes_played, na.rm=TRUE)/60)
+    spotifyish_summary[['top_artist']]  <- artist_data %>% arrange(-minutes_played) %>% pull(Artist) %>% .[1]
+    spotifyish_summary[['top_5_artists']] <-  artist_data %>% arrange(-minutes_played) %>% pull(Artist) %>% .[1:5]
+    spotifyish_summary[['minutes_listening']] <- floor(sum(track_data$Play.Count*(track_data$Total.Time/(60*1000)), na.rm=TRUE))
+    spotifyish_summary[['hours_spent_w_top_artist']] <- floor(max(artist_data$minutes_played, na.rm=TRUE)/60)
   }
     
-  cat(paste("This year you listened to", spotifyish_summary$diff_songs, "different songs in", service_name,
+  cat(paste("This year you listened to", spotifyish_summary[['diff_songs']], "different songs in", service_name,
             ifelse(include_time, 
-                   paste("\nYou spent", spotifyish_summary$minutes_listening, "minutes listening this year"),
+                   paste("\nYou spent", spotifyish_summary[['minutes_listening']], "minutes listening this year"),
                    ""),
             ifelse(include_time, 
-                   paste("\nYou spent", spotifyish_summary$hours_spent_w_top_artist, "hours with your favourite artist"),
+                   paste("\nYou spent", spotifyish_summary[['hours_spent_w_top_artist']], "hours with your favourite artist"),
                    paste("\nYour top artist was")),
-            spotifyish_summary$top_artist,
-            "\nTop Artists: \n", paste0(spotifyish_summary$top_5_artists, collapse="\n "),
-            "\nTop Songs: \n", paste0(paste0(spotifyish_summary$top_5_songs$Name, ", ", 
-                                             spotifyish_summary$top_5_songs$Artist), 
+            spotifyish_summary[['top_artist']],
+            "\nTop Artists: \n", paste0(spotifyish_summary[['top_5_artists']], collapse="\n "),
+            "\nTop Songs: \n", paste0(paste0(spotifyish_summary[['top_5_songs']][['Name']], ", ", 
+                                             spotifyish_summary[['top_5_songs']][['Artist']]), 
                                       collapse="\n ")))
 }
 
@@ -214,7 +214,7 @@ get_spotifyish_summary_short <- function(track_data, artist_data, include_time=T
                    paste0("\nTop Genre \n", spotifyish_summary[['top_genre']]),
                    ''),
             "\nTop Artists: \n", paste0(spotifyish_summary[['top_5_artists']], collapse="\n "),
-            "\nTop Songs: \n", paste0(paste0(spotifyish_summary$top_5_songs$Name, ", ", 
-                                             spotifyish_summary$top_5_songs$Artist), 
+            "\nTop Songs: \n", paste0(paste0(spotifyish_summary[['top_5_songs']][['Name']], ", ", 
+                                             spotifyish_summary[['top_5_songs']][['Artist']]), 
                                       collapse="\n ")))
 }

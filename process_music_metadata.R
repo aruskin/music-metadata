@@ -1,8 +1,8 @@
-library(XML)
-library(dplyr)
-library(yaml)
-library(jsonlite)
-library(lubridate)
+require(XML)
+require(dplyr)
+require(yaml)
+require(jsonlite)
+require(lubridate)
 
 ##### iTunes/Music metadata #####
 
@@ -70,7 +70,7 @@ get_min_lb_track_data <- function(list_item){
   min_data
 }
 
-format_listenbrainz_data <- function(){
+format_listenbrainz_data <- function(min_listen_date, max_listen_date){
   # Select JSON file
   listenbrainz_export <- file.choose()
   data <- jsonlite::fromJSON(listenbrainz_export, simplifyVector = FALSE)
@@ -78,13 +78,17 @@ format_listenbrainz_data <- function(){
   play_level_data <- lapply(X = data, FUN = get_min_lb_track_data) %>%
     bind_rows()
   
+  filtered_data <- play_level_data %>%
+    filter(Listen.Date >= min_listen_date) %>%
+    filter(Listen.Date <= max_listen_date) %>%
+    filter(!is.na(Total.Time))
+  
   # Currently assuming same artist and song title = same song since many
   # entries (depending on listening source and LB's development stage when
   # data captured) won't have time or album info or other helpful IDs
-  track_level_data <- play_level_data %>%
+  track_level_data <- filtered_data %>%
     dplyr::group_by(Artist, Name) %>%
-    dplyr::summarise(Play.Count=n(), Total.Time=max(Total.Time, na.rm=TRUE)) %>%
-    dplyr::mutate(Total.Time=ifelse(Total.Time==-Inf, NA, Total.Time))
+    dplyr::summarise(Play.Count=n(), Total.Time=max(Total.Time, na.rm=TRUE)) 
   
   track_level_data   
 }
